@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(curl -s http://localhost:8000/v1/config)",
+      "Bash(curl -s http://localhost:8000/v1/memories -H \"X-User-ID: test-user\")",
+      "Bash(curl -s -X POST http://localhost:8000/v1/logs -H \"X-User-ID: test-user\")",
+      "Bash(curl -s \"http://localhost:8000/v1/logs\" -H \"X-User-ID: test-user\")",
+      "Bash(pkill -f \"uvicorn src.main:app\")",
+      "Bash(sqlite3:*)",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(find /home/alxe/project/Memoir -name \"*.pyc\" -delete)",
+      "Bash(find /home/alxe/project/Memoir -name \"__pycache__\" -type d -exec rm -rf {} +)",
+      "Bash(pkill -f uvicorn)",
+      "Bash(pkill -9 -f uvicorn)",
+      "Bash(curl:*)",
+      "Bash(xxd)"
+    ]
+  }
+}

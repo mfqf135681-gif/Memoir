@@ -1,0 +1,52 @@
+# Memoir Configuration
+
+# Server settings
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
+
+# Data storage
+storage:
+  base_dir: "./data"
+  users_dir: "users"
+  max_short_term_mb: 100  # Maximum size for short-term logs
+
+# Memory settings
+memory:
+  short_term_max_messages: 1000  # Keep last N messages in short-term
+  long_term_chunk_size: 2000     # Characters per chunk for long-term storage
+
+# Index settings
+index:
+  vector:
+    enabled: true
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    device: "cpu"
+  fulltext:
+    enabled: true
+    fts_language: "english"
+
+# LLM settings
+llm:
+  provider: "openai"  # "ollama" or "openai"
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "qwen3.5:9B"
+    timeout: 180
+  openai:
+    api_key: "sk-4d8353b010c040c0ba40dc0fb13a99f3"
+    model: "deepseek-chat"
+    base_url: "https://api.deepseek.com/v1"
+
+# Retrieval settings
+retrieval:
+  top_k: 5
+  similarity_threshold: 0.7
+  expand_session_turns: 3
+  expand_time_days: 7
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

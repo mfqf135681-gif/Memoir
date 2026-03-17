@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memoir - AI 记忆助手</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide-static/0.469.0/lucide.min.js">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+
+    /* 毛玻璃效果 */
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .glass-light {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* 消息动画 */
+    .message-enter-active {
+      animation: messageIn 0.3s ease-out;
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 渐变背景 */
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a78bfa 100%);
+    }
+
+    /* 按钮hover */
+    .btn-hover {
+      transition: all 0.2s ease;
+    }
+
+    .btn-hover:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    /* 输入框聚焦 */
+    .input-focus:focus {
+      outline: none;
+      border-color: rgba(139, 92, 246, 0.5);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
+
+    /* 记忆项hover */
+    .memory-item {
+      transition: all 0.2s ease;
+    }
+
+    .memory-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(4px);
+    }
+
+    /* 拖拽区域 */
+    .drop-zone.dragover {
+      border-color: #8b5cf6;
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    /* 徽章动画 */
+    .badge-pulse {
+      animation: badgePulse 2s infinite;
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* 加载动画 */
+    .typing-indicator span {
+      animation: typing 1.4s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-4px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航栏 -->
+    <header class="h-14 glass flex items-center justify-between px-4 shrink-0 z-50">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+          </svg>
+        </div>
+        <span class="text-lg font-semibold text-white">Memoir</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- 用户ID显示/切换 -->
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-400">用户:</span>
+          <input
+            v-model="userId"
+            @change="switchUser"
+            class="bg-transparent border border-gray-600 rounded px-2 py-1 text-sm focus:border-primary-500 outline-none"
+            placeholder="输入用户ID"
+          >
+        </div>
+
+        <!-- 设置按钮 -->
+        <button
+          @click="showConfig = !showConfig"
+          class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          :class="{'bg-white/10': showConfig}"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 配置面板 -->
+    <div v-if="showConfig" class="absolute top-16 right-4 w-96 glass rounded-xl p-4 z-50 max-h-[80vh] overflow-y-auto">
+      <!-- 标签切换 -->
+      <div class="flex gap-2 mb-4 border-b border-white/10 pb-2">
+        <button
+          @click="configTab = 'general'"
+          class="px-3 py-1.5 rounded-lg text-sm transition-colors"
+          :class="configTab === 'general' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white'"
+        >
+          通用
+        </button>
+        <button
+          @click="configTab = 'api'"
+          class="px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1"
+          :class="configTab === 'api' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white'"
+        >
+          API配置
+          <span v-if="apiStatus === 'ok'" class="w-2 h-2 rounded-full bg-green-400"></span>
+          <span v-else-if="apiStatus === 'error'" class="w-2 h-2 rounded-full bg-red-400"></span>
+        </button>
+      </div>
+
+      <!-- 通用设置 -->
+      <div v-if="configTab === 'general'">
+        <h3 class="text-sm font-semibold text-white mb-3">设置</h3>
+        <div class="space-y-3">
+          <!-- 模式切换 -->
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-300">增强模式</span>
+            <button
+              @click="enhancedMode = !enhancedMode"
+              class="w-12 h-6 rounded-full transition-colors relative"
+              :class="enhancedMode ? 'bg-primary-600' : 'bg-gray-600'"
+            >
+              <span
+                class="absolute w-5 h-5 bg-white rounded-full top-0.5 transition-transform"
+                :class="enhancedMode ? 'left-6' : 'left-0.5'"
+              ></span>
+            </button>
+          </div>
+
+          <!-- 温度滑块 -->
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-gray-300">温度</span>
+              <span class="text-primary-400">{{ temperature }}</span>
+            </div>
+            <input
+              type="range"
+              v-model="temperature"
+              min="0" max="1" step="0.1"
+              class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            >
+          </div>
+
+          <!-- 使用记忆 -->
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-300">启用记忆</span>
+            <button
+              @click="useMemory = !useMemory"
+              class="w-12 h-6 rounded-full transition-colors relative"
+              :class="useMemory ? 'bg-primary-600' : 'bg-gray-600'"
+            >
+              <span
+                class="absolute w-5 h-5 bg-white rounded-full top-0.5 transition-transform"
+                :class="useMemory ? 'left-6' : 'left-0.5'"
+              ></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 日志查看按钮 -->
+        <button
+          @click="showLogs = !showLogs"
+          class="mt-4 w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors"
+        >
+          查看操作日志
+        </button>
+      </div>
+
+      <!-- API配置 -->
+      <div v-if="configTab === 'api'">
+        <h3 class="text-sm font-semibold text-white mb-3">API 配置</h3>
+
+        <!-- 提供商选择 -->
+        <div class="mb-3">
+          <label class="text-sm text-gray-300">提供商</label>
+          <select
+            v-model="apiProvider"
+            @change="onProviderChange"
+            class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500"
+          >
+            <option v-for="(p, key) in providers" :key="key" :value="key">
+              {{ p.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- API Key -->
+        <div class="mb-3">
+          <label class="text-sm text-gray-300">API Key</label>
+          <input
+            v-model="apiKey"
+            type="password"
+            class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500"
+            placeholder="输入API Key"
+          >
+        </div>
+
+        <!-- Base URL -->
+        <div class="mb-3">
+          <label class="text-sm text-gray-300">Base URL</label>
+          <input
+            v-model="apiBaseUrl"
+            class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500"
+            placeholder="https://api.example.com/v1"
+          >
+        </div>
+
+        <!-- 模型选择 -->
+        <div class="mb-3">
+          <label class="text-sm text-gray-300">模型</label>
+          <input
+            v-model="apiModel"
+            class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500"
+            placeholder="模型名称"
+          >
+        </div>
+
+        <!-- 测试和保存按钮 -->
+        <div class="flex gap-2 mt-4">
+          <button
+            @click="testApiConnection"
+            :disabled="testingApi"
+            class="flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors disabled:opacity-50"
+          >
+            {{ testingApi ? '测试中...' : '测试连接' }}
+          </button>
+          <button
+            @click="saveApiConfig"
+            :disabled="savingApi"
+            class="flex-1 py-2 rounded-lg gradient-bg text-white text-sm btn-hover disabled:opacity-50"
+          >
+            {{ savingApi ? '保存中...' : '保存配置' }}
+          </button>
+        </div>
+
+        <!-- 连接状态提示 -->
+        <div v-if="apiTestResult" class="mt-3 p-2 rounded-lg text-sm" :class="apiTestResult.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+          {{ apiTestResult.message }}
+        </div>
+
+        <!-- 当前状态 -->
+        <div class="mt-4 pt-3 border-t border-white/10">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-400">当前状态</span>
+            <span v-if="apiStatus === 'ok'" class="text-green-400 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-green-400"></span> 已连接
+            </span>
+            <span v-else-if="apiStatus === 'error'" class="text-red-400 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-red-400"></span> 未连接
+            </span>
+            <span v-else class="text-gray-400">未配置</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主布局 -->
+    <div class="flex-1 flex overflow-hidden">
+
+      <!-- 左侧边栏 -->
+      <aside class="w-72 glass border-r border-white/10 flex flex-col shrink-0">
+
+        <!-- 记忆列表 -->
+        <div class="flex-1 overflow-hidden flex flex-col">
+          <div class="p-3 border-b border-white/10">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                记忆列表
+              </h2>
+              <button
+                @click="showAddMemory = true"
+                class="p-1 rounded hover:bg-white/10 transition-colors"
+                title="添加记忆"
+              >
+                <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 记忆列表 -->
+          <div class="flex-1 overflow-y-auto p-2 space-y-1" v-if="memories.length">
+            <div
+              v-for="memory in memories"
+              :key="memory.id"
+              class="memory-item p-2 rounded-lg cursor-pointer group"
+              @click="selectMemory(memory)"
+            >
+              <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white truncate">{{ memory.title || '无标题' }}</p>
+                  <p class="text-xs text-gray-400 truncate mt-0.5">{{ memory.content || '' }}</p>
+                </div>
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    @click.stop="editMemory(memory)"
+                    class="p-1 rounded hover:bg-white/10"
+                    title="编辑"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                  </button>
+                  <button
+                    @click.stop="deleteMemory(memory.id)"
+                    class="p-1 rounded hover:bg-red-500/20 text-red-400"
+                    title="删除"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1 mt-1" v-if="memory.tags && memory.tags.length">
+                <span
+                  v-for="tag in (typeof memory.tags === 'string' ? memory.tags.split(',') : memory.tags)"
+                  :key="tag"
+                  class="text-xs px-1.5 py-0.5 rounded bg-primary-500/20 text-primary-300"
+                >
+                  {{ tag }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="flex-1 flex items-center justify-center text-gray-500 text-sm">
+            暂无记忆
+          </div>
+        </div>
+
+        <!-- 文件管理 -->
+        <div class="border-t border-white/10 p-3">
+          <h2 class="text-sm font-semibold text-white flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg>
+            文件管理
+          </h2>
+          <div
+            class="border-2 border-dashed border-white/20 rounded-lg p-4 text-center cursor-pointer hover:border-primary-500/50 transition-colors"
+            @click="$refs.sidebarFileInput.click()"
+            @dragover.prevent="dragover = true"
+            @dragleave="dragover = false"
+            @drop.prevent="handleDrop"
+            :class="{'border-primary-500 bg-primary-500/10': dragover}"
+          >
+            <input
+              ref="sidebarFileInput"
+              type="file"
+              class="hidden"
+              @change="handleFileSelect"
+              multiple
+            >
+            <svg class="w-6 h-6 mx-auto text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <p class="text-xs text-gray-400">拖拽或点击上传</p>
+          </div>
+
+          <!-- 上传文件列表 -->
+          <div v-if="uploadedFiles.length" class="mt-2 space-y-1">
+            <div
+              v-for="file in uploadedFiles"
+              :key="file.file_id"
+              class="flex items-center gap-2 p-2 rounded bg-white/5"
+            >
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="text-xs truncate flex-1">{{ file.filename }}</span>
+              <span v-if="file.uploading" class="text-xs text-yellow-400">上传中...</span>
+              <span v-else class="text-xs text-green-400">✓</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 主聊天区域 -->
+      <main class="flex-1 flex flex-col min-w-0">
+
+        <!-- 消息列表 -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="messagesContainer">
+          <div
+            v-for="(msg, index) in messages"
+            :key="index"
+            class="message-enter-active flex gap-3"
+            :class="{'flex-row-reverse': msg.role === 'user'}"
+          >
+            <!-- 头像 -->
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+              :class="msg.role === 'user' ? 'gradient-bg' : 'bg-white/10'"
+            >
+              <svg v-if="msg.role === 'user'" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+              <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+              </svg>
+            </div>
+
+            <!-- 消息气泡 -->
+            <div
+              class="max-w-[70%] rounded-2xl px-4 py-2"
+              :class="msg.role === 'user' ? 'bg-primary-600 text-white' : 'glass-light'"
+            >
+              <p class="text-sm whitespace-pre-wrap">{{ msg.content }}</p>
+
+              <!-- 引用记忆 -->
+              <div v-if="msg.used_memories && msg.used_memories.length" class="mt-2 pt-2 border-t border-white/10">
+                <div class="flex flex-wrap gap-1">
+                  <span
+                    v-for="mem in msg.used_memories"
+                    :key="mem.id"
+                    class="text-xs px-2 py-1 rounded bg-primary-500/30 text-primary-200 cursor-pointer hover:bg-primary-500/50"
+                    @click="highlightMemory(mem.id)"
+                  >
+                    📚 {{ mem.title || '记忆' }}
+                  </span>
+                </div>
+              </div>
+
+              <p class="text-xs text-gray-400 mt-1">{{ formatTime(msg.timestamp) }}</p>
+            </div>
+          </div>
+
+          <!-- 加载指示器 -->
+          <div v-if="loading" class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+              </svg>
+            </div>
+            <div class="glass-light rounded-2xl px-4 py-3">
+              <div class="typing-indicator flex gap-1">
+                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="p-4 border-t border-white/10">
+          <div
+            class="glass rounded-xl p-2 flex items-end gap-2"
+            :class="{'drop-zone dragover': dragover}"
+            @dragover.prevent="dragover = true"
+            @dragleave="dragover = false"
+            @drop.prevent="handleDrop"
+          >
+            <!-- 文件按钮 -->
+            <button
+              @click="$refs.chatFileInput.click()"
+              class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              title="上传文件"
+            >
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+              </svg>
+            </button>
+
+            <input
+              ref="chatFileInput"
+              type="file"
+              class="hidden"
+              @change="handleFileSelect"
+              multiple
+            >
+
+            <!-- 附件预览（已上传待发送） -->
+            <div v-if="chatAttachments.length" class="flex gap-2 mb-2 flex-wrap">
+              <div
+                v-for="(file, i) in chatAttachments"
+                :key="'att-' + i"
+                class="relative group"
+              >
+                <img
+                  v-if="file.preview"
+                  :src="file.preview"
+                  class="w-16 h-16 object-cover rounded-lg"
+                >
+                <div v-else class="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center p-1">
+                  <span class="text-xs text-center truncate w-14">{{ file.filename }}</span>
+                </div>
+                <button
+                  @click="removeChatAttachment(i)"
+                  class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 上传中状态 -->
+            <div v-if="uploadingCount > 0" class="text-xs text-yellow-400 mb-2">
+              上传中... ({{ uploadingCount }})
+            </div>
+
+            <!-- 输入框 -->
+            <textarea
+              v-model="inputMessage"
+              @keydown.enter.exact.prevent="sendMessage"
+              placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+              rows="1"
+              class="flex-1 bg-transparent border-none outline-none text-sm resize-none max-h-32"
+              ref="inputRef"
+            ></textarea>
+
+            <!-- 发送按钮 -->
+            <button
+              @click="sendMessage"
+              :disabled="!inputMessage.trim() && chatAttachments.length === 0"
+              class="p-2 rounded-lg gradient-bg text-white disabled:opacity-50 disabled:cursor-not-allowed btn-hover"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- 添加/编辑记忆弹窗 -->
+    <div v-if="showAddMemory" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAddMemory = false">
+      <div class="glass rounded-xl p-6 w-full max-w-lg">
+        <h3 class="text-lg font-semibold text-white mb-4">{{ editingMemory ? '编辑记忆' : '添加记忆' }}</h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm text-gray-300">标题</label>
+            <input
+              v-model="memoryForm.title"
+              class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500"
+              placeholder="输入标题"
+            >
+          </div>
+
+          <div>
+            <label class="text-sm text-gray-300">内容</label>
+            <textarea
+              v-model="memoryForm.content"
+              rows="4"
+              class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 resize-none"
+              placeholder="输入记忆内容"
+            ></textarea>
+          </div>
+
+          <div>
+            <label class="text-sm text-gray-300">标签 (用逗号分隔)</label>
+            <input
+              v-model="memoryForm.tags"
+              class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500"
+              placeholder="如: preferences, work"
+            >
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            @click="showAddMemory = false; editingMemory = null"
+            class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors"
+          >
+            取消
+          </button>
+          <button
+            @click="saveMemory"
+            class="px-4 py-2 rounded-lg gradient-bg text-white text-sm btn-hover"
+          >
+            保存
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志查看器 -->
+    <div v-if="showLogs" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showLogs = false">
+      <div class="glass rounded-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <h3 class="text-lg font-semibold text-white mb-4">操作日志</h3>
+
+        <div class="flex-1 overflow-y-auto space-y-2">
+          <div
+            v-for="log in logs"
+            :key="log.id"
+            class="p-3 rounded-lg bg-white/5"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-primary-400">{{ log.operation }}</span>
+              <span class="text-xs text-gray-500">{{ formatTime(log.timestamp) }}</span>
+            </div>
+            <pre class="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{{ JSON.stringify(log.details, null, 2) }}</pre>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <button
+            @click="showLogs = false"
+            class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, watch, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        const API_BASE = 'http://localhost:8000/v1';
+
+        // 状态
+        const userId = ref('demo-user');
+        const messages = ref([]);
+        const memories = ref([]);
+        const logs = ref([]);
+        const inputMessage = ref('');
+        const loading = ref(false);
+        const showConfig = ref(false);
+        const showLogs = ref(false);
+        const showAddMemory = ref(false);
+        const editingMemory = ref(null);
+        const dragover = ref(false);
+
+        // 文件上传状态
+        const pendingFiles = ref([]);        // 待上传文件（选择后、上传前）
+        const uploadedFiles = ref([]);       // 已上传文件（侧边栏显示）
+        const chatAttachments = ref([]);     // 聊天附件（待发送）
+        const uploadingCount = ref(0);       // 上传中数量
+
+        // 配置
+        const configTab = ref('general');
+        const enhancedMode = ref(false);
+        const temperature = ref(0.7);
+        const useMemory = ref(true);
+
+        // API配置
+        const providers = ref({});
+        const apiProvider = ref('deepseek');
+        const apiKey = ref('');
+        const apiBaseUrl = ref('');
+        const apiModel = ref('');
+        const apiStatus = ref('unknown');  // 'ok', 'error', 'unknown'
+        const testingApi = ref(false);
+        const savingApi = ref(false);
+        const apiTestResult = ref(null);
+
+        // 表单
+        const memoryForm = ref({
+          title: '',
+          content: '',
+          tags: ''
+        });
+
+        // 会话
+        const sessionId = ref(null);
+
+        // 引用
+        const messagesContainer = ref(null);
+        const inputRef = ref(null);
+
+        // 滚动到底部
+        const scrollToBottom = () => {
+          nextTick(() => {
+            if (messagesContainer.value) {
+              messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+            }
+          });
+        };
+
+        // 加载提供商列表
+        const loadProviders = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/config/providers`);
+            const data = await res.json();
+            providers.value = data.providers || {};
+          } catch (e) {
+            console.error('加载提供商失败:', e);
+          }
+        };
+
+        // 加载用户配置
+        const loadUserConfig = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/config/user`, {
+              headers: { 'X-User-ID': userId.value }
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.llm) {
+                apiProvider.value = data.llm.provider || 'deepseek';
+                apiBaseUrl.value = data.llm.base_url || '';
+                apiModel.value = data.llm.model || '';
+                // Don't load api_key for security, keep existing if entered
+                if (data.llm.api_key === '***' && apiKey.value) {
+                  // keep existing key
+                } else {
+                  apiKey.value = data.llm.api_key || '';
+                }
+                // Test connection if config exists
+                if (apiKey.value && apiBaseUrl.value) {
+                  testApiConnection();
+                }
+              }
+            }
+          } catch (e) {
+            console.error('加载用户配置失败:', e);
+          }
+        };
+
+        // 提供商切换
+        const onProviderChange = () => {
+          const p = providers.value[apiProvider.value];
+          if (p) {
+            apiBaseUrl.value = p.base_url;
+            if (p.models && p.models.length > 0) {
+              apiModel.value = p.models[0];
+            }
+          }
+        };
+
+        // 测试API连接
+        const testApiConnection = async () => {
+          if (!apiKey.value || !apiBaseUrl.value) {
+            apiTestResult.value = { success: false, message: '请填写API Key和Base URL' };
+            return;
+          }
+
+          testingApi.value = true;
+          apiTestResult.value = null;
+
+          try {
+            const res = await fetch(`${API_BASE}/config/user/test`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                provider: apiProvider.value,
+                api_key: apiKey.value,
+                base_url: apiBaseUrl.value,
+                model: apiModel.value
+              })
+            });
+            const data = await res.json();
+            apiTestResult.value = data;
+            apiStatus.value = data.success ? 'ok' : 'error';
+          } catch (e) {
+            apiTestResult.value = { success: false, message: '测试失败: ' + e.message };
+            apiStatus.value = 'error';
+          }
+
+          testingApi.value = false;
+        };
+
+        // 保存API配置
+        const saveApiConfig = async () => {
+          if (!apiKey.value) {
+            apiTestResult.value = { success: false, message: '请填写API Key' };
+            return;
+          }
+
+          savingApi.value = true;
+
+          try {
+            const res = await fetch(`${API_BASE}/config/user`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-User-ID': userId.value
+              },
+              body: JSON.stringify({
+                llm: {
+                  provider: apiProvider.value,
+                  api_key: apiKey.value,
+                  base_url: apiBaseUrl.value,
+                  model: apiModel.value,
+                  temperature: temperature.value
+                }
+              })
+            });
+
+            if (res.ok) {
+              apiTestResult.value = { success: true, message: '配置已保存' };
+              apiStatus.value = 'ok';
+            } else {
+              apiTestResult.value = { success: false, message: '保存失败' };
+            }
+          } catch (e) {
+            apiTestResult.value = { success: false, message: '保存失败: ' + e.message };
+          }
+
+          savingApi.value = false;
+        };
+
+        // 切换用户
+        const switchUser = () => {
+          messages.value = [];
+          memories.value = [];
+          sessionId.value = null;
+          loadMemories();
+          loadUserConfig();
+        };
+
+        // 加载记忆
+        const loadMemories = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/memories?include_content=true`, {
+              headers: { 'X-User-ID': userId.value }
+            });
+            const data = await res.json();
+            memories.value = data.memories || [];
+          } catch (e) {
+            console.error('加载记忆失败:', e);
+          }
+        };
+
+        // 加载日志
+        const loadLogs = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/logs`, {
+              headers: { 'X-User-ID': userId.value }
+            });
+            const data = await res.json();
+            logs.value = data.logs || [];
+          } catch (e) {
+            console.error('加载日志失败:', e);
+          }
+        };
+
+        // 发送消息（在后面定义）
+
+        // 选择记忆
+        const selectMemory = (memory) => {
+          // 可以跳转到对应记忆
+        };
+
+        // 编辑记忆
+        const editMemory = (memory) => {
+          editingMemory.value = memory;
+          memoryForm.value = {
+            title: memory.title || '',
+            content: memory.content || '',
+            tags: Array.isArray(memory.tags) ? memory.tags.join(', ') : memory.tags
+          };
+          showAddMemory.value = true;
+        };
+
+        // 保存记忆
+        const saveMemory = async () => {
+          const tags = memoryForm.value.tags.split(',').map(t => t.trim()).filter(t => t);
+
+          try {
+            if (editingMemory.value) {
+              // 更新
+              await fetch(`${API_BASE}/memories/${editingMemory.value.id}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-User-ID': userId.value
+                },
+                body: JSON.stringify({
+                  title: memoryForm.value.title,
+                  content: memoryForm.value.content,
+                  tags
+                })
+              });
+            } else {
+              // 创建
+              await fetch(`${API_BASE}/memories`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-User-ID': userId.value
+                },
+                body: JSON.stringify({
+                  title: memoryForm.value.title,
+                  content: memoryForm.value.content,
+                  tags
+                })
+              });
+            }
+
+            showAddMemory.value = false;
+            editingMemory.value = null;
+            memoryForm.value = { title: '', content: '', tags: '' };
+            loadMemories();
+
+          } catch (e) {
+            alert('保存失败: ' + e.message);
+          }
+        };
+
+        // 删除记忆
+        const deleteMemory = async (id) => {
+          if (!confirm('确定要删除这条记忆吗?')) return;
+
+          try {
+            await fetch(`${API_BASE}/memories/${id}`, {
+              method: 'DELETE',
+              headers: { 'X-User-ID': userId.value }
+            });
+            loadMemories();
+          } catch (e) {
+            alert('删除失败: ' + e.message);
+          }
+        };
+
+        // 高亮记忆
+        const highlightMemory = (id) => {
+          // 可以在侧边栏中高亮对应记忆
+        };
+
+        // ==================== 文件上传处理 ====================
+        // 1. 选择文件
+        const handleFileSelect = (e) => {
+          const files = Array.from(e.target.files);
+          files.forEach(file => addPendingFile(file));
+          e.target.value = ''; // 清空input
+        };
+
+        // 2. 拖拽
+        const handleDrop = (e) => {
+          dragover.value = false;
+          const files = Array.from(e.dataTransfer.files);
+          files.forEach(file => addPendingFile(file));
+        };
+
+        // 3. 添加待上传文件
+        const addPendingFile = (file) => {
+          const pending = {
+            id: Date.now() + Math.random(),
+            name: file.name,
+            file: file,
+            preview: null,
+            uploading: false
+          };
+
+          // 图片生成预览
+          if (file.type.startsWith('image/')) {
+            pending.preview = URL.createObjectURL(file);
+          }
+
+          pendingFiles.value.push(pending);
+
+          // 自动上传
+          uploadSingleFile(pending);
+        };
+
+        // 4. 上传单个文件
+        const uploadSingleFile = async (pending) => {
+          pending.uploading = true;
+          uploadingCount.value++;
+
+          const formData = new FormData();
+          formData.append('file', pending.file);
+
+          // 侧边栏显示
+          uploadedFiles.value.push({
+            filename: pending.name,
+            uploading: true
+          });
+
+          try {
+            const res = await fetch(`${API_BASE}/files/upload?extract_content=true`, {
+              method: 'POST',
+              headers: { 'X-User-ID': userId.value },
+              body: formData
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+
+            const data = await res.json();
+
+            // 更新侧边栏状态
+            const idx = uploadedFiles.value.findIndex(f => f.filename === pending.name);
+            if (idx !== -1) {
+              uploadedFiles.value[idx] = { ...data, uploading: false };
+            }
+
+            // 添加到聊天附件（已上传待发送）
+            chatAttachments.value.push({
+              filename: pending.name,
+              // 截断过大的内容（保留前20000字符）
+              content: data.extracted_content
+                ? (data.extracted_content.length > 20000
+                    ? data.extracted_content.substring(0, 20000) + '\n\n[内容已截断]'
+                    : data.extracted_content)
+                : '',
+              preview: pending.preview,
+              file_id: data.file_id
+            });
+
+            // 从待上传中移除
+            const pIdx = pendingFiles.value.findIndex(p => p.id === pending.id);
+            if (pIdx !== -1) pendingFiles.value.splice(pIdx, 1);
+
+          } catch (e) {
+            console.error('上传失败:', e);
+            // 从侧边栏移除失败的文件
+            const idx = uploadedFiles.value.findIndex(f => f.filename === pending.name);
+            if (idx !== -1) uploadedFiles.value.splice(idx, 1);
+
+            // 从待上传中移除
+            const pIdx = pendingFiles.value.findIndex(p => p.id === pending.id);
+            if (pIdx !== -1) pendingFiles.value.splice(pIdx, 1);
+
+            alert(`文件上传失败: ${pending.name}`);
+          } finally {
+            uploadingCount.value = Math.max(0, uploadingCount.value - 1);
+          }
+        };
+
+        // 5. 移除待上传文件
+        const removePendingFile = (index) => {
+          const file = pendingFiles.value[index];
+          if (file.preview) URL.revokeObjectURL(file.preview);
+          pendingFiles.value.splice(index, 1);
+        };
+
+        // 6. 移除聊天附件
+        const removeChatAttachment = (index) => {
+          const file = chatAttachments.value[index];
+          if (file.preview) URL.revokeObjectURL(file.preview);
+          chatAttachments.value.splice(index, 1);
+        };
+
+        // ==================== 发送消息 ====================
+        const sendMessage = async () => {
+          const content = inputMessage.value.trim();
+          if (!content && chatAttachments.value.length === 0) return;
+
+          // 构建消息内容 - 包含上传的文件内容
+          let messageContent = content;
+          if (chatAttachments.value.length > 0) {
+            const fileContents = chatAttachments.value
+              .map(f => `【文件: ${f.filename}】\n${f.content || '(空)'}`)
+              .join('\n\n---\n\n');
+            messageContent = content
+              ? `${content}\n\n【附件内容】\n${fileContents}`
+              : `【附件内容】\n${fileContents}`;
+          }
+
+          // 添加用户消息
+          messages.value.push({
+            role: 'user',
+            content: messageContent,
+            timestamp: new Date().toISOString(),
+            attachments: chatAttachments.value.map(f => f.filename)
+          });
+
+          inputMessage.value = '';
+          // 清除聊天附件（发送后）
+          chatAttachments.value.forEach(f => {
+            if (f.preview) URL.revokeObjectURL(f.preview);
+          });
+          chatAttachments.value = [];
+          scrollToBottom();
+
+          loading.value = true;
+
+          try {
+            const res = await fetch(`${API_BASE}/chat`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-User-ID': userId.value
+              },
+              body: JSON.stringify({
+                message: messageContent,
+                session_id: sessionId.value,
+                use_memory: useMemory.value,
+                temperature: temperature.value,
+                ...(enhancedMode.value ? { expand_similar: true } : {})
+              })
+            });
+
+            const data = await res.json();
+
+            sessionId.value = data.session_id;
+
+            // 添加AI响应
+            messages.value.push({
+              role: 'assistant',
+              content: data.response,
+              timestamp: new Date().toISOString(),
+              used_memories: data.used_memories || []
+            });
+
+            scrollToBottom();
+            loadMemories();
+
+          } catch (e) {
+            messages.value.push({
+              role: 'assistant',
+              content: '抱歉，发生错误: ' + e.message,
+              timestamp: new Date().toISOString()
+            });
+          }
+
+          loading.value = false;
+        };
+
+        // 格式化时间
+        const formatTime = (timestamp) => {
+          if (!timestamp) return '';
+          const date = new Date(timestamp);
+          return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        // 初始化
+        loadMemories();
+        loadProviders();
+        loadUserConfig();
+
+        return {
+          userId,
+          messages,
+          memories,
+          logs,
+          inputMessage,
+          loading,
+          showConfig,
+          configTab,
+          showLogs,
+          showAddMemory,
+          editingMemory,
+          memoryForm,
+          providers,
+          apiProvider,
+          apiKey,
+          apiBaseUrl,
+          apiModel,
+          apiStatus,
+          testingApi,
+          savingApi,
+          apiTestResult,
+          enhancedMode,
+          temperature,
+          useMemory,
+          dragover,
+          pendingFiles,
+          uploadedFiles,
+          chatAttachments,
+          uploadingCount,
+          messagesContainer,
+          inputRef,
+          switchUser,
+          sendMessage,
+          selectMemory,
+          editMemory,
+          saveMemory,
+          deleteMemory,
+          highlightMemory,
+          handleFileSelect,
+          handleDrop,
+          removePendingFile,
+          removeChatAttachment,
+          formatTime,
+          onProviderChange,
+          testApiConnection,
+          saveApiConfig
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
