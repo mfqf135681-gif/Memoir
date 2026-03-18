@@ -277,10 +277,22 @@
           </div>
         </div>
 
+        <!-- 导入按钮 -->
+        <button
+          @click="showImport = !showImport"
+          class="mt-4 w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+          </svg>
+          导入记忆
+          <span v-if="pendingImportCount > 0" class="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{{ pendingImportCount }}</span>
+        </button>
+
         <!-- 日志查看按钮 -->
         <button
           @click="showLogs = !showLogs"
-          class="mt-4 w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors"
+          class="mt-2 w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors"
         >
           查看操作日志
         </button>
@@ -731,6 +743,134 @@
         </div>
       </div>
     </div>
+
+    <!-- 导入记忆弹窗 -->
+    <div v-if="showImport" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showImport = false">
+      <div class="glass rounded-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            导入记忆
+          </h3>
+          <button @click="showImport = false" class="text-gray-400 hover:text-white">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 上传区域 -->
+        <div
+          v-if="!importJobId"
+          class="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
+          @click="$refs.importFileInput.click()"
+          @dragover.prevent="dragover = true"
+          @dragleave="dragover = false"
+          @drop.prevent="handleImportDrop"
+          :class="{'border-primary-500 bg-primary-500/10': dragover}"
+        >
+          <input
+            type="file"
+            ref="importFileInput"
+            @change="handleImportFileSelect"
+            accept=".txt,.md,.json,.html,.htm,.docx,.pdf"
+            class="hidden"
+          />
+          <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+          <p class="text-gray-300 mb-1">点击选择文件或将文件拖拽到此处</p>
+          <p class="text-xs text-gray-500">支持 TXT, MD, JSON, HTML, DOCX, PDF</p>
+        </div>
+
+        <!-- 处理中状态 -->
+        <div v-else-if="importStatus === 'processing'" class="text-center py-8">
+          <div class="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p class="text-white">正在处理文件中...</p>
+          <p class="text-sm text-gray-400 mt-2">AI 正在分析内容并提取潜在记忆</p>
+        </div>
+
+        <!-- 候选列表 -->
+        <div v-else-if="importCandidates.length > 0" class="flex-1 overflow-y-auto space-y-3 mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-gray-400">找到 {{ importCandidates.length }} 条候选记忆</span>
+            <div class="flex gap-2">
+              <button @click="selectAllCandidates" class="text-xs text-primary-400 hover:text-primary-300">全选</button>
+              <button @click="deselectAllCandidates" class="text-xs text-gray-400 hover:text-gray-300">取消全选</button>
+            </div>
+          </div>
+
+          <div
+            v-for="candidate in importCandidates"
+            :key="candidate.id"
+            class="p-3 rounded-lg bg-white/5 border border-white/10"
+          >
+            <div class="flex items-start gap-3">
+              <input
+                type="checkbox"
+                v-model="candidate.selected"
+                class="mt-1 w-4 h-4 rounded border-white/30 bg-white/10 text-primary-500 focus:ring-primary-500"
+              />
+              <div class="flex-1">
+                <p class="text-sm text-white">{{ candidate.text }}</p>
+                <div class="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                  <span v-if="candidate.confidence" class="px-1.5 py-0.5 rounded bg-primary-500/20 text-primary-400">
+                    置信度: {{ (candidate.confidence * 100).toFixed(0) }}%
+                  </span>
+                  <span>来源: {{ candidate.source_file }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else-if="importStatus === 'completed'" class="text-center py-8">
+          <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-gray-400">未能从文件中提取出重要信息</p>
+        </div>
+
+        <!-- 错误状态 -->
+        <div v-else-if="importStatus === 'failed'" class="text-center py-8">
+          <svg class="w-12 h-12 mx-auto text-red-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-red-400">{{ importError || '处理失败' }}</p>
+        </div>
+
+        <!-- 按钮区域 -->
+        <div class="flex justify-between gap-3 mt-4">
+          <button
+            v-if="importJobId && importStatus !== 'processing'"
+            @click="resetImport"
+            class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors"
+          >
+            重新选择文件
+          </button>
+          <div class="flex-1"></div>
+          <button
+            v-if="importCandidates.length > 0"
+            @click="rejectSelectedCandidates"
+            class="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm transition-colors"
+            :disabled="!selectedCandidateIds.length"
+          >
+            拒绝选中 ({{ selectedCandidateIds.length }})
+          </button>
+          <button
+            v-if="importCandidates.length > 0"
+            @click="confirmSelectedCandidates"
+            class="px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-sm transition-colors"
+            :disabled="!selectedCandidateIds.length"
+          >
+            确认选中 ({{ selectedCandidateIds.length }})
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -752,6 +892,14 @@
         const showAddMemory = ref(false);
         const editingMemory = ref(null);
         const dragover = ref(false);
+
+        // 导入功能状态
+        const showImport = ref(false);
+        const importJobId = ref(null);
+        const importStatus = ref('');
+        const importCandidates = ref([]);
+        const importError = ref('');
+        const pendingImportCount = ref(0);
 
         // 文件上传状态
         const pendingFiles = ref([]);        // 待上传文件（选择后、上传前）
@@ -955,6 +1103,168 @@
           } catch (e) {
             console.error('加载日志失败:', e);
           }
+        };
+
+        // 获取待确认导入数量
+        const loadPendingImportCount = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/import/pending/count`, {
+              headers: { 'X-User-ID': userId.value }
+            });
+            const data = await res.json();
+            pendingImportCount.value = data.count || 0;
+          } catch (e) {
+            console.error('获取待确认数量失败:', e);
+          }
+        };
+
+        // 处理导入文件选择
+        const handleImportFileSelect = async (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+          await startImport(file);
+        };
+
+        // 处理拖拽导入
+        const handleImportDrop = async (event) => {
+          const file = event.dataTransfer.files[0];
+          if (!file) return;
+          await startImport(file);
+        };
+
+        // 开始导入
+        const startImport = async (file) => {
+          importStatus.value = 'processing';
+          importJobId.value = null;
+          importCandidates.value = [];
+          importError.value = '';
+
+          const formData = new FormData();
+          formData.append('file', file);
+
+          try {
+            const res = await fetch(`${API_BASE}/import`, {
+              method: 'POST',
+              headers: { 'X-User-ID': userId.value },
+              body: formData
+            });
+            const data = await res.json();
+            importJobId.value = data.job_id;
+
+            // 轮询检查状态
+            pollImportStatus();
+          } catch (e) {
+            importStatus.value = 'failed';
+            importError.value = e.message;
+          }
+        };
+
+        // 轮询导入状态
+        let importPollTimer = null;
+        const pollImportStatus = async () => {
+          if (!importJobId.value) return;
+
+          try {
+            const res = await fetch(`${API_BASE}/import/${importJobId.value}`, {
+              headers: { 'X-User-ID': userId.value }
+            });
+            const data = await res.json();
+            importStatus.value = data.status;
+
+            if (data.status === 'completed') {
+              // 获取候选列表
+              const candidatesRes = await fetch(`${API_BASE}/import/${importJobId.value}/candidates`, {
+                headers: { 'X-User-ID': userId.value }
+              });
+              const candidatesData = await candidatesRes.json();
+              importCandidates.value = (candidatesData.items || []).map(c => ({
+                ...c,
+                selected: true
+              }));
+              clearInterval(importPollTimer);
+            } else if (data.status === 'failed') {
+              importError.value = data.error || '处理失败';
+              clearInterval(importPollTimer);
+            } else {
+              importPollTimer = setTimeout(pollImportStatus, 2000);
+            }
+          } catch (e) {
+            console.error('检查导入状态失败:', e);
+          }
+        };
+
+        // 选择/取消全选候选
+        const selectAllCandidates = () => {
+          importCandidates.value.forEach(c => c.selected = true);
+        };
+        const deselectAllCandidates = () => {
+          importCandidates.value.forEach(c => c.selected = false);
+        };
+
+        // 获取选中的候选ID
+        const selectedCandidateIds = computed(() => {
+          return importCandidates.value.filter(c => c.selected).map(c => c.id);
+        });
+
+        // 确认选中的记忆
+        const confirmSelectedCandidates = async () => {
+          if (!selectedCandidateIds.value.length) return;
+          try {
+            const res = await fetch(`${API_BASE}/import/${importJobId.value}/confirm`, {
+              method: 'POST',
+              headers: {
+                'X-User-ID': userId.value,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ memory_ids: selectedCandidateIds.value })
+            });
+            const data = await res.json();
+            if (data.success) {
+              // 移除已确认的记忆
+              importCandidates.value = importCandidates.value.filter(c => !c.selected);
+              // 重新加载记忆列表
+              loadMemories();
+              loadPendingImportCount();
+              if (importCandidates.value.length === 0) {
+                importJobId.value = null;
+              }
+            }
+          } catch (e) {
+            console.error('确认记忆失败:', e);
+          }
+        };
+
+        // 拒绝选中的记忆
+        const rejectSelectedCandidates = async () => {
+          if (!selectedCandidateIds.value.length) return;
+          try {
+            const res = await fetch(`${API_BASE}/import/${importJobId.value}/reject`, {
+              method: 'POST',
+              headers: {
+                'X-User-ID': userId.value,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ memory_ids: selectedCandidateIds.value })
+            });
+            const data = await res.json();
+            if (data.success) {
+              importCandidates.value = importCandidates.value.filter(c => !c.selected);
+              loadPendingImportCount();
+              if (importCandidates.value.length === 0) {
+                importJobId.value = null;
+              }
+            }
+          } catch (e) {
+            console.error('拒绝记忆失败:', e);
+          }
+        };
+
+        // 重置导入
+        const resetImport = () => {
+          importJobId.value = null;
+          importStatus.value = '';
+          importCandidates.value = [];
+          importError.value = '';
         };
 
         // 发送消息（在后面定义）
@@ -1241,6 +1551,7 @@
         loadMemories();
         loadProviders();
         loadUserConfig();
+        loadPendingImportCount();
 
         return {
           userId,
@@ -1268,6 +1579,23 @@
           temperature,
           useMemory,
           dragover,
+
+          // 导入功能
+          showImport,
+          importJobId,
+          importStatus,
+          importCandidates,
+          importError,
+          pendingImportCount,
+          selectedCandidateIds,
+          handleImportFileSelect,
+          handleImportDrop,
+          selectAllCandidates,
+          deselectAllCandidates,
+          confirmSelectedCandidates,
+          rejectSelectedCandidates,
+          resetImport,
+
           pendingFiles,
           uploadedFiles,
           chatAttachments,

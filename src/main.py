@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from .api.routes import chat, config, files, logs, memories
+from .api.routes import chat, config, files, import as import_routes, logs, memories
 from .core.config import get_settings
 from .utils.logger import setup_logger
 
@@ -63,6 +63,7 @@ app.include_router(memories.router)
 app.include_router(files.router)
 app.include_router(config.router)
 app.include_router(logs.router)
+app.include_router(import_routes.router)
 
 # Static files
 static_dir = Path(__file__).parent.parent / "static"

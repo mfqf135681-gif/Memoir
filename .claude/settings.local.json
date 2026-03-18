@@ -19,7 +19,13 @@
       "Bash(pkill -9 -f uvicorn)",
       "Bash(curl:*)",
       "Bash(xxd)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(pip install:*)",
+      "Bash(/tmp/testvenv/bin/pip install:*)",
+      "Bash(for f:*)",
+      "Bash(do python3:*)",
+      "Bash(echo \"$f OK\")",
+      "Bash(done)"
     ]
   }
 }
