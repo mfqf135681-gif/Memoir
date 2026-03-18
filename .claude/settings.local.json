@@ -18,7 +18,8 @@
       "Bash(pkill -f uvicorn)",
       "Bash(pkill -9 -f uvicorn)",
       "Bash(curl:*)",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Bash(chmod:*)"
     ]
   }
 }
