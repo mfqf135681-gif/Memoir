@@ -425,7 +425,7 @@ BACKUP_EOF
     crontab -l > "$MEMOIR_DIR/meta/crontab.bak" 2>/dev/null || true
 
     # Add new job
-    (crontab -l 2>/dev/null | grep -v "memoir_backup.sh"; echo "$CRON_JOB") | crontab -
+    (crontab -l 2>/dev/null | grep -v "backup.sh"; echo "$CRON_JOB") | crontab -
 
     log_success "已添加到 crontab: 每周日凌晨 2 点自动备份"
 else

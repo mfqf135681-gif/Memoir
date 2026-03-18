@@ -168,6 +168,16 @@ python -m src.main
 
 ## API 文档
 
+### 认证（可选）
+
+如果启用了 API Key 认证，需要在请求头中添加：
+
+```
+X-API-Key: sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+X-User-ID: your-user-id
+Content-Type: application/json
+```
+
 ### 1. 聊天接口
 
 ```bash

@@ -83,6 +83,20 @@ class LoggingSettings(BaseModel):
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 
+class AuthSettings(BaseModel):
+    """Authentication configuration."""
+    enabled: bool = False
+    api_key: Optional[str] = None
+
+
+class BackupSettings(BaseModel):
+    """Backup configuration."""
+    enabled: bool = False
+    cron: str = "0 2 * * 0"  # Weekly at 2 AM Sunday
+    keep: int = 3
+    path: str = "~/.memory-chat/backups"
+
+
 class Settings(BaseModel):
     """Main settings container."""
     server: ServerSettings = ServerSettings()
@@ -92,6 +106,8 @@ class Settings(BaseModel):
     llm: LLMSettings = LLMSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
     logging: LoggingSettings = LoggingSettings()
+    auth: AuthSettings = AuthSettings()
+    backup: BackupSettings = BackupSettings()
 
     @classmethod
     def from_yaml(cls, config_path: str) -> "Settings":

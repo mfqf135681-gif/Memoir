@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, status
 
 from ..core.config import Settings, get_settings
 from ..core.dialogue_engine import DialogueEngine
@@ -11,6 +11,36 @@ from ..core.memory_index import MemoryIndex
 from ..core.memory_retriever import MemoryRetriever
 from ..core.memory_store import MemoryStore
 from ..core.user_config import get_user_config
+
+
+async def verify_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    settings: Settings = Depends(get_settings),
+) -> bool:
+    """Verify API key if authentication is enabled.
+
+    Args:
+        x_api_key: API key from header
+        settings: Application settings
+
+    Returns:
+        True if authentication passes
+
+    Raises:
+        HTTPException: If authentication fails
+    """
+    if not settings.auth.enabled:
+        return True
+
+    if not settings.auth.api_key:
+        return True
+
+    if x_api_key != settings.auth.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+        )
+    return True
 
 
 async def get_current_user_id(
