@@ -48,7 +48,26 @@
 - Python 3.11+
 - Ollama (本地模型) 或 DeepSeek/OpenAI API Key
 
-### 安装步骤
+### 方式一：交互式安装脚本（推荐 for Linux）
+
+```bash
+# 克隆项目
+git clone https://github.com/your-repo/memoir.git
+cd memoir
+
+# 运行安装脚本（仅支持 Linux）
+./install.sh
+```
+
+安装脚本会自动完成以下工作：
+- 环境检查（Python 3.9+、pip、venv）
+- LLM 提供商配置（Ollama 或 OpenAI 兼容服务）
+- 安全设置（API Key 自动生成、端口自动检测）
+- 数据目录创建（`~/.memory-chat`）
+- 可选定时备份配置
+- 依赖安装与服务启动
+
+### 方式二：手动安装
 
 ```bash
 # 1. 克隆项目
@@ -87,12 +106,25 @@ llm:
 ### 启动服务
 
 ```bash
-# 方式一：直接运行
+# 方式一：使用管理脚本（推荐，安装脚本自动生成）
+./memoir.sh start
+
+# 方式二：直接运行
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
-# 方式二：Python 模块
+# 方式三：Python 模块
 python -m src.main
 ```
+
+**管理脚本命令：**
+
+| 命令 | 说明 |
+|------|------|
+| `./memoir.sh start` | 启动服务 |
+| `./memoir.sh stop` | 停止服务 |
+| `./memoir.sh restart` | 重启服务 |
+| `./memoir.sh status` | 查看状态 |
+| `./memoir.sh log` | 查看日志 |
 
 ### 访问前端
 
@@ -108,12 +140,18 @@ python -m src.main
 |--------|------|--------|
 | `server.host` | 服务监听地址 | `0.0.0.0` |
 | `server.port` | 服务端口 | `8000` |
+| `auth.enabled` | 是否启用 API 认证 | `true` |
+| `auth.api_key` | API 认证密钥 | (自动生成) |
 | `storage.base_dir` | 数据存储目录 | `./data` |
 | `memory.short_term_max_messages` | 短期记忆保留条数 | `1000` |
 | `retrieval.top_k` | 检索返回条数 | `5` |
 | `retrieval.similarity_threshold` | 相似度阈值 | `0.7` |
 | `retrieval.expand_session_turns` | 会话扩展轮数 | `3` |
 | `retrieval.expand_time_days` | 时间邻近天数 | `7` |
+| `backup.enabled` | 是否启用自动备份 | `false` |
+| `backup.cron` | 备份定时任务 | `0 2 * * 0` |
+| `backup.keep` | 保留备份份数 | `3` |
+| `backup.path` | 备份存储路径 | `~/.memory-chat/backups` |
 
 ### 支持的 LLM 提供商
 
@@ -293,17 +331,28 @@ Memoir
 
 ### 数据目录结构
 
+使用安装脚本时，数据默认存储在 `~/.memory-chat`：
+
 ```
-data/users/{user_id}/
-├── short_term/           # 短期记忆 (JSONL)
-├── long_term/            # 长期记忆 (Markdown)
-├── files/                # 上传文件
-├── meta/                 # 文件元数据
-├── logs/                 # 操作日志
-└── index/                # 索引数据
-    ├── chroma/           # ChromaDB
-    └── search.db         # SQLite FTS5
+~/.memory-chat/
+├── config.yaml           # 配置文件
+├── users/{user_id}/      # 用户数据
+│   ├── short_term/       # 短期记忆 (JSONL)
+│   ├── long_term/        # 长期记忆 (Markdown)
+│   ├── files/            # 上传文件
+│   ├── meta/             # 文件元数据
+│   ├── logs/             # 操作日志
+│   └── index/            # 索引数据
+│       ├── chroma/       # ChromaDB
+│       └── search.db     # SQLite FTS5
+├── backups/              # 备份文件 (启用自动备份时)
+└── meta/                 # 安装日志、进程ID等
+    ├── install.log       # 安装时间记录
+    ├── memoir.pid        # 服务进程ID
+    └── memoir.log        # 服务运行日志
 ```
+
+> 手动安装时，数据目录默认为 `./data`
 
 ---
 
